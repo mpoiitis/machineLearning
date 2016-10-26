@@ -16,6 +16,7 @@ class KMeans(object):
         self.set = trainSet
         self.labels = labels
         self.centroids = self.initializeCentroids()
+        self.setsAccordingToCentroids = self.createSets()
 
     #centers is a list of arrays. Each array is an image
     def initializeCentroids(self):
@@ -27,17 +28,35 @@ class KMeans(object):
 
         return centroids
 
-    def getDistanceFromCentroids(self,instance):
+    def createSets(self):
+        sets = []
+        for x in range (self.k):
+            subset = []
+            subset.append(self.centroids[x])
+            sets.append(subset)
+
+        return sets
+
+    def updateCentroids(self,instance):
         distances = {}
         for x in range(len(self.centroids)):
             distance = np.linalg.norm(instance - self.centroids[x])
             distances[x] = distance
         sortedDistances = sorted(distances.items(), key = itemgetter(1))
-        print("Distances for k = " + str(self.k) + " : " + str(sortedDistances))
+        self.moveCentroids(instance, sortedDistances)
+
+    def moveCentroids(self, instance, sortedDistances):
+        #get index of shortest to instance centroid
+        index = sortedDistances[0][0]
+        #update the corresponding set
+        self.setsAccordingToCentroids[index].append(instance)
+        #recreate centroids according to mean value of updated set
+        self.centroids[index] = np.mean(np.array([set for set in self.setsAccordingToCentroids[index]]), axis=0)
+
 
     def calculateCentroidsFromTrain(self):
         for j,instance in enumerate(self.set):
-            self.getDistanceFromCentroids(instance)
+            self.updateCentroids(instance)
 
 for k in (3,5):
     kmeans = KMeans(k)
