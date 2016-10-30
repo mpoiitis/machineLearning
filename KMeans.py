@@ -20,11 +20,14 @@ class KMeans(object):
 
     #centers is a list of arrays. Each array is an image
     def initializeCentroids(self):
-        #take k random centers
+        #take k centers from each category based on labels
         centroids = []
         for x in range (self.k):
-            index = random.randint(0,len(self.set))
-            centroids.append(self.set[index])
+            chosen = False
+            for index,item in enumerate(self.labels):
+                if (item == x) and (chosen == False):
+                    chosen = True
+                    centroids.append(self.set[index])
 
         return centroids
 
@@ -37,12 +40,17 @@ class KMeans(object):
 
         return sets
 
-    def updateCentroids(self,instance):
+    def getDistances(self,instance):
         distances = {}
         for x in range(len(self.centroids)):
             distance = np.linalg.norm(instance - self.centroids[x])
             distances[x] = distance
         sortedDistances = sorted(distances.items(), key = itemgetter(1))
+
+        return sortedDistances
+
+    def updateCentroids(self,instance):
+        sortedDistances = self.getDistances(instance)
         self.moveCentroids(instance, sortedDistances)
 
     def moveCentroids(self, instance, sortedDistances):
@@ -58,7 +66,33 @@ class KMeans(object):
         for j,instance in enumerate(self.set):
             self.updateCentroids(instance)
 
-for k in (3,5):
-    kmeans = KMeans(k)
-    kmeans.fit(train, labelsTrain)
-    kmeans.calculateCentroidsFromTrain()
+    def getWinner(self, instance):
+        sortedDistances = self.getDistances(instance)
+        winner = sortedDistances[0][0]
+        return winner
+
+    def predict(self, test):
+        predictions = []
+        for index,instance in enumerate(test):
+            winner = self.getWinner(instance)
+            predictions.append(winner)
+
+        return predictions
+
+    def getAccuracy(self, predictions, labelsTest):
+        correct = 0
+        for x in range(len(labelsTest)):
+            if (labelsTest[x] == predictions[x]):
+                correct += 1
+        ratio = (correct/float(len(labelsTest)))*100.0
+
+        return ratio
+
+kmeans = KMeans(10)#the number of distinct numbers
+kmeans.fit(train, labelsTrain)
+kmeans.calculateCentroidsFromTrain()
+predictions = kmeans.predict(test)
+
+accuracy = kmeans.getAccuracy(predictions,labelsTest)
+print("K neighbors using k = 10")
+print('Accuracy: ' + str(accuracy) + '%')
