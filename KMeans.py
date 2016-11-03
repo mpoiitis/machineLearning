@@ -15,30 +15,28 @@ class KMeans(object):
     def fit(self, trainSet, labels):
         self.set = trainSet
         self.labels = labels
-        self.centroids = self.initializeCentroids()
-        self.setsAccordingToCentroids = self.createSets()
-
-    #centers is a list of arrays. Each array is an image
-    def initializeCentroids(self):
-        #take k centers from each category based on labels
-        centroids = []
-        for x in range (self.k):
-            chosen = False
-            for index,item in enumerate(self.labels):
-                if (item == x) and (chosen == False):
-                    chosen = True
-                    centroids.append(self.set[index])
-
-        return centroids
+        self.itemSets = self.createSets()
+        self.centroids = self.getCentroids()
 
     def createSets(self):
         sets = []
         for x in range (self.k):
             subset = []
-            subset.append(self.centroids[x])
             sets.append(subset)
 
+        for index,instance in enumerate(self.set):
+            label = self.labels[index]
+            sets[label].append(instance)
+
         return sets
+
+    def getCentroids(self):
+        centroids = []
+        for x in range(self.k):
+            mean = np.mean(np.array([set for set in self.itemSets[x]]), axis=0)
+            centroids.append(mean)
+
+        return centroids
 
     def getDistances(self,instance):
         distances = {}
@@ -57,13 +55,13 @@ class KMeans(object):
         #get index of shortest to instance centroid
         index = sortedDistances[0][0]
         #update the corresponding set
-        self.setsAccordingToCentroids[index].append(instance)
+        self.itemSets[index].append(instance)
         #recreate centroids according to mean value of updated set
-        self.centroids[index] = np.mean(np.array([set for set in self.setsAccordingToCentroids[index]]), axis=0)
+        self.centroids[index] = np.mean(np.array([set for set in self.itemSets[index]]), axis=0)
 
 
-    def calculateCentroidsFromTrain(self):
-        for j,instance in enumerate(self.set):
+    def calculateCentroidsFromTest(self, test):
+        for j,instance in enumerate(test):
             self.updateCentroids(instance)
 
     def getWinner(self, instance):
@@ -90,9 +88,9 @@ class KMeans(object):
 
 kmeans = KMeans(10)#the number of distinct numbers
 kmeans.fit(train, labelsTrain)
-kmeans.calculateCentroidsFromTrain()
-predictions = kmeans.predict(test)
 
+predictions = kmeans.predict(test)
 accuracy = kmeans.getAccuracy(predictions,labelsTest)
-print("K neighbors using k = 10")
+
+print("K nearest centroids using k = 10")
 print('Accuracy: ' + str(accuracy) + '%')
