@@ -1,6 +1,5 @@
 import pandas as pd
 import numpy as np
-import random
 from operator import itemgetter
 
 test = pd.read_csv("test.csv", header=None).as_matrix()
