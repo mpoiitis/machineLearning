@@ -158,3 +158,22 @@ weightsEnd = weights([1024, 10])
 biasesEnd = biases([10])
 
 yConvolutional = tf.matmul(dropout, weightsEnd) + biasesEnd
+
+"---------------Training and Evaluation-------------------"
+crossEntropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(yConvolutional, y))
+trainStep = tf.train.AdamOptimizer(1e-4).minimize(crossEntropy)
+correctPrediction = tf.equal(tf.argmax(yConvolutional,1), tf.argmax(y,1))
+accuracy = tf.reduce_mean(tf.cast(correctPrediction, tf.float32))
+
+session.run(tf.initialize_all_variables())
+
+"define number of epochs"
+for i in range(20000):
+    batch = data.trainSet.fetchBatch(50)
+    if i%100 == 0:
+        trainAccuracy = accuracy.eval(feed_dict={x:batch[0], y: batch[1], keepProbability: 1.0})
+        print("step %d, training accuracy %g"%(i, trainAccuracy))
+    trainStep.run(feed_dict={x: batch[0], y: batch[1], keepProbability: 0.5})
+
+print("test accuracy %g"%accuracy.eval(feed_dict={x: data.testSet.images,
+    y: data.testSet.labels, keepProbability: 1.0}))
