@@ -2,6 +2,12 @@ import tensorflow as tf
 import numpy as np
 import collections
 
+NUM_OF_EPOCHS = 10
+BATCH_SIZE = 50
+ADAM_ON = False
+PATCH_SIZE_DIMENSION = 5
+STRIDE = 1
+NUM_OF_CLASSES = 10
 
 class Dataset(object):
     def __init__(self, currentSet, labels, reshape = True):
@@ -9,6 +15,7 @@ class Dataset(object):
             "supposing depth = 1 reshape to [numOfExamples, rows*columns]"
             currentSet = currentSet.reshape(currentSet.shape[0],
                 currentSet.shape[1] * currentSet.shape[2])
+
         self.numOfExamples = currentSet.shape[0]
         self.set = currentSet
         self.labels = labels
@@ -52,24 +59,24 @@ def getData(fileName, numOfImages):
 
 def convertToOneHot(labels, numOfClasses):
     "one hot vector for e.g. number 3 = 0001000000"
-  numOfLabels = labels.shape[0]
-  offset = numpy.arange(numOfLabels) * numOfClasses
-  oneHot = numpy.zeros((numOfLabels, numOfClasses))
-  "find the exact positions to put 1"
-  oneHot.flat[offset + labels.ravel()] = 1
-  return oneHot
+    numOfLabels = labels.shape[0]
+    offset = np.arange(numOfLabels) * numOfClasses
+    oneHot = np.zeros((numOfLabels, numOfClasses))#numOfLabels x numOfClasses matrix
+    "find the exact positions to put 1"
+    oneHot.flat[offset + labels.ravel()] = 1
+    return oneHot
 
 def getLabels(fileName, numOfImages, oneHot=False):
-  with open(fileName,"rb") as f:
-    f.read(8)
-    chunk = f.read(numOfImages)
-    "labels to int64 vector"
-    labels = np.frombuffer(chunk, dtype=np.uint8).astype(np.int64)
-    if oneHot:
-        return convertToOneHot(labels,10)#10 is the number of classes
-  return labels
+    with open(fileName,"rb") as f:
+        f.read(8)
+        chunk = f.read(numOfImages)
+        "labels to int64 vector"
+        labels = np.frombuffer(chunk, dtype=np.uint8).astype(np.int64)
+        if oneHot:
+            return convertToOneHot(labels,10)#10 is the number of classes
+    return labels
 
-def readData(oneHot=false):
+def readData(oneHot=False):
     test = getData('t10k-images.idx3-ubyte', 10000)
     train = getData('train-images.idx3-ubyte', 60000)
     labelsTest = getLabels('t10k-labels.idx1-ubyte', 10000, oneHot)
@@ -83,7 +90,8 @@ def readData(oneHot=false):
     trainSet = Dataset(train, labelsTrain)
     validationSet = Dataset(validation, labelsValidation)
     testSet = Dataset(test, labelsTest)
-    return collections.namedtuple('Datasets', ['trainSet','validationSet', 'testSet'])
+    Datasets = collections.namedtuple('Datasets', ['trainSet', 'validationSet', 'testSet'])
+    return Datasets(trainSet = trainSet, validationSet = validationSet, testSet = testSet)
 
 "random weights with a small deviation that follow truncated normal distribution"
 def weights(shape):
@@ -97,12 +105,11 @@ def biases(shape):
 
 "stride of 1 and zero padded"
 def convolutionalLayer(x, W):
-  return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding='SAME')
+    return tf.nn.conv2d(x, W, strides=[1, STRIDE, STRIDE, 1], padding='SAME')
 
 "pooling over 2x2 blocks using max function"
 def maxPoolingLayer2by2(x):
-  return tf.nn.max_pool(x, ksize=[1, 2, 2, 1],
-                        strides=[1, 2, 2, 1], padding='SAME')
+    return tf.nn.max_pool(x, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
 
 def fullyConnectedLayer(x, W):
     return tf.matmul(x, W)
@@ -116,7 +123,7 @@ x = tf.placeholder(tf.float32, shape = [None, 784])
 y = tf.placeholder(tf.float32, shape = [None, 10])
 
 "convolutional layer 1"
-weights1 = weights([5, 5, 1, 32])#5x5 patch 1 input 32 outputs
+weights1 = weights([PATCH_SIZE_DIMENSION, PATCH_SIZE_DIMENSION, 1, 32])#5x5 patch 1 input 32 outputs
 biases1 = biases([32])
 
 xReshaped = tf.reshape(x, [-1,28,28,1])
@@ -133,7 +140,7 @@ weights2 = weights([5, 5, 32, 64])#5x5 patch 32 inputs 64 outputs
 biases2 = biases([64])
 
 conv2 = convolutionalLayer(pool1, weights2)
-u2 = conv2 = biases2
+u2 = conv2 + biases2
 y2 = tf.nn.relu(u2)
 
 "pooling layer 2"
@@ -154,26 +161,47 @@ keepProbability = tf.placeholder(tf.float32)
 dropout = tf.nn.dropout(yLast, keepProbability)
 
 "softmax regression-like layer"
-weightsEnd = weights([1024, 10])
-biasesEnd = biases([10])
+weightsEnd = weights([1024, NUM_OF_CLASSES])
+biasesEnd = biases([NUM_OF_CLASSES])
 
 yConvolutional = tf.matmul(dropout, weightsEnd) + biasesEnd
 
-"---------------Training and Evaluation-------------------"
+"---------------Training-------------------"
+print("Convolutional network using patch " + str(PATCH_SIZE_DIMENSION) + "x" + str(PATCH_SIZE_DIMENSION)
+    + ", stride = " + str(STRIDE) + " and 2x2 max pooling filter.")
 crossEntropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(yConvolutional, y))
-trainStep = tf.train.AdamOptimizer(1e-4).minimize(crossEntropy)
+
+if(ADAM_ON):
+    print("Using Adam Optimizer with learning rate 10^(-4)")
+    trainStep = tf.train.AdamOptimizer(1e-4).minimize(crossEntropy)
+else:
+    print("Using Gradient Descent with learning rate 0.5")
+    trainStep = tf.train.GradientDescentOptimizer(0.5).minimize(crossEntropy)
+
 correctPrediction = tf.equal(tf.argmax(yConvolutional,1), tf.argmax(y,1))
 accuracy = tf.reduce_mean(tf.cast(correctPrediction, tf.float32))
 
 session.run(tf.initialize_all_variables())
 
-"define number of epochs"
-for i in range(20000):
-    batch = data.trainSet.fetchBatch(50)
-    if i%100 == 0:
-        trainAccuracy = accuracy.eval(feed_dict={x:batch[0], y: batch[1], keepProbability: 1.0})
-        print("step %d, training accuracy %g"%(i, trainAccuracy))
+print("Dataset with " + str(NUM_OF_CLASSES) + " classes.")
+print(str(NUM_OF_EPOCHS) + " training epochs.")
+trainSet = data.trainSet
+while(True):
+    batch = trainSet.fetchBatch(BATCH_SIZE)
     trainStep.run(feed_dict={x: batch[0], y: batch[1], keepProbability: 0.5})
+    if(trainSet.completedEpochs == NUM_OF_EPOCHS):
+        break
 
-print("test accuracy %g"%accuracy.eval(feed_dict={x: data.testSet.images,
-    y: data.testSet.labels, keepProbability: 1.0}))
+"---------------Evaluation-------------------"
+
+accumulativeAccuracy = 0
+steps = 0
+
+while(data.testSet.completedEpochs == 0):
+    steps +=1
+    batch = data.testSet.fetchBatch(BATCH_SIZE)
+    testAccuracy = accuracy.eval(feed_dict={x: batch[0], y: batch[1], keepProbability: 1.0})
+    accumulativeAccuracy += testAccuracy
+
+meanAccuracy = accumulativeAccuracy / float(steps)
+print("Test accuracy %g"%meanAccuracy)
