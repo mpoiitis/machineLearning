@@ -84,3 +84,77 @@ def readData(oneHot=false):
     validationSet = Dataset(validation, labelsValidation)
     testSet = Dataset(test, labelsTest)
     return collections.namedtuple('Datasets', ['trainSet','validationSet', 'testSet'])
+
+"random weights with a small deviation that follow truncated normal distribution"
+def weights(shape):
+    initial = tf.truncated_normal(shape, stddev=0.1)
+    return tf.Variable(initial)
+
+"random positive bias to avoid dead neurons due to ReLU function"
+def biases(shape):
+    initial = tf.constant(0.1, shape=shape)
+    return tf.Variable(initial)
+
+"stride of 1 and zero padded"
+def convolutionalLayer(x, W):
+  return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding='SAME')
+
+"pooling over 2x2 blocks using max function"
+def maxPoolingLayer2by2(x):
+  return tf.nn.max_pool(x, ksize=[1, 2, 2, 1],
+                        strides=[1, 2, 2, 1], padding='SAME')
+
+def fullyConnectedLayer(x, W):
+    return tf.matmul(x, W)
+
+data = readData(True)#True is for one hot
+
+session = tf.InteractiveSession()
+
+"input ( 28 x 28 = 784 ) and output ( 10 possible one-hot outputs )"
+x = tf.placeholder(tf.float32, shape = [None, 784])
+y = tf.placeholder(tf.float32, shape = [None, 10])
+
+"convolutional layer 1"
+weights1 = weights([5, 5, 1, 32])#5x5 patch 1 input 32 outputs
+biases1 = biases([32])
+
+xReshaped = tf.reshape(x, [-1,28,28,1])
+
+conv1 = convolutionalLayer(xReshaped, weights1)
+u1 = conv1 + biases1
+y1 = tf.nn.relu(u1)
+
+"pooling layer 1"
+pool1 = maxPoolingLayer2by2(y1)
+
+"convolutional layer 2"
+weights2 = weights([5, 5, 32, 64])#5x5 patch 32 inputs 64 outputs
+biases2 = biases([64])
+
+conv2 = convolutionalLayer(pool1, weights2)
+u2 = conv2 = biases2
+y2 = tf.nn.relu(u2)
+
+"pooling layer 2"
+pool2 = maxPoolingLayer2by2(y2)
+
+"fully-connected layer"
+pool2 = tf.reshape(pool2, [-1, 7*7*64])
+"1024 neurons "
+weightsLast = weights([7*7*64, 1024])# image reduced to 7x7
+biasesLast = biases([1024])
+
+fullyCon = fullyConnectedLayer(pool2,weightsLast)
+uLast = fullyCon + biasesLast
+yLast = tf.nn.relu(uLast)
+
+"dropout layer"
+keepProbability = tf.placeholder(tf.float32)
+dropout = tf.nn.dropout(yLast, keepProbability)
+
+"softmax regression-like layer"
+weightsEnd = weights([1024, 10])
+biasesEnd = biases([10])
+
+yConvolutional = tf.matmul(dropout, weightsEnd) + biasesEnd
