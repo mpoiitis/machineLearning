@@ -1,75 +1,86 @@
-import pandas as pd
+import tensorflow as tf
 import numpy as np
-
-class CNN(object):
-    def __init__(cnnFilter, stride, classes):
-        self.filter = cnnFilter
-        self.stride = stride
-        self.classes = classes
-
-    def weights(self, numOfInputs, numOfOutputs):
-    def bias(self, numOfOutputs):
-    def convolutionalLayer(self, train, weights):
-    def relu(self, u):
-    def MaxPoolingLayer2x2(self, y):
-    def fullyConnectedLayer(self, y, weights):
-        return tf.matmul(y, weights)'''to be changed'''
-    def dropoutLayer(self, y, keepProbability):
+import collections
 
 
+class Dataset(object):
+    def __init__(self, currentSet, labels, reshape = True):
+        if (reshape):
+            "supposing depth = 1 reshape to [numOfExamples, rows*columns]"
+            currentSet = currentSet.reshape(currentSet.shape[0],
+                currentSet.shape[1] * currentSet.shape[2])
+        self.numOfExamples = currentSet.shape[0]
+        self.set = currentSet
+        self.labels = labels
+        self.completedEpochs = 0
+        self.epochIndex = 0
 
+    def fetchBatch(self, batchSize):
+        begin = self.epochIndex
+        self.epochIndex += batchSize
 
-"load files to arrays"
-test = pd.read_csv("test.csv", header=None).as_matrix()
-train = pd.read_csv("train.csv", header=None).as_matrix()
-labelsTest = pd.read_csv("label_test.csv", header=None).as_matrix().flatten()#make labels a single list
-labelsTrain = pd.read_csv("label_train.csv", header=None).as_matrix().flatten()
+        if (self.epochIndex > self.numOfExamples ):
+            self.completedEpochs += 1
 
-"initialize convolutional neural network with a filter and a stride"
-cnnFilter = 25 #5x5
-stride = 1 #step each time
-classes = 10 #numbers from 0 to 9
-cnn = CNN(cnnFilter, stride, classes)
+            "shuffle the rows of the dataset"
+            permutation = np.arange(self.numOfExamples)
+            np.random.shuffle(permutation)
+            "apply shuffling"
+            self.set = self.set[permutation]
+            self.labels = self.labels[permutation]
 
-"convolutional layer 1"
-numOfInputs1 = len(train[0])#number of inputs
-numOfOutputs1 = 32
-weights1 = cnn.weights(numOfInputs1, numOfOutputs1)
-biases1 = cnn.bias(numOfOutputs1)
-conv1 = cnn.convolutionalLayer(train, weights1)
-u1 = conv1 + biases1'''matrix addition must be implemented'''
-y1 = cnn.relu(u1)
+            "begin new epoch"
+            begin = 0
+            self.epochIndex = batchSize #move index for the first time of this epoch
 
-"pooling layer 1"
-pool1 = cnn.MaxPoolingLayer2x2(y1)
+        stop = self.epochIndex
 
-"convolutional layer 2"
-numOfInputs2 = numOfOutputs1
-numOfOutputs2 = 64
-weights2 = cnn.weights(numOfInputs2, numOfOutputs2)
-biases2 = cnn.bias(numOfOutputs2)
-conv2 = cnn.convolutionalLayer(pool1, weights2)
-u2 = conv2 + biases2'''matrix addition must be implemented'''
-y2 = cnn.relu(u2)
+        return self.set[begin:stop], self.labels[begin:stop]
 
-"pooling layer 2"
-pool2 = cnn.MaxPoolingLayer2x2(y2)
+def getData(fileName, numOfImages):
+  with open(fileName,"rb") as f:
+    f.read(16)
+    "read size of image x number of images"
+    chunk = f.read(28 * 28 * numOfImages)
+    "return a 1-dimensional array of integers and cast it to float32"
+    data = np.frombuffer(chunk, dtype=np.uint8).astype(np.float32)
+    "rescale from [0, 255] to [-0.5, 0.5]"
+    data = (data - (255 / 2.0)) / 255
+    "turn to a 4D tensor"
+    data = data.reshape(numOfImages, 28, 28, 1)
+    return data
 
-"fully-connected layer"
-weightsLast = cnn.weights(7*7*64, 1024)# image reduced to 7x7
-biasLast = cnn.bias(1024)
-fullyCon = cnn.fullyConnectedLayer(pool2, weightsLast)
-uLast = fullyCon + biasLast'''matrix addition must be implemented'''
-yLast = cnn.relu(uLast)
+def convertToOneHot(labels, numOfClasses):
+    "one hot vector for e.g. number 3 = 0001000000"
+  numOfLabels = labels.shape[0]
+  offset = numpy.arange(numOfLabels) * numOfClasses
+  oneHot = numpy.zeros((numOfLabels, numOfClasses))
+  "find the exact positions to put 1"
+  oneHot.flat[offset + labels.ravel()] = 1
+  return oneHot
 
-"dropout layer"
-keepProbability = '''a number'''
-dropout = cnn.dropoutLayer(yLast, keepProbability)
+def getLabels(fileName, numOfImages, oneHot=False):
+  with open(fileName,"rb") as f:
+    f.read(8)
+    chunk = f.read(numOfImages)
+    "labels to int64 vector"
+    labels = np.frombuffer(chunk, dtype=np.uint8).astype(np.int64)
+    if oneHot:
+        return convertToOneHot(labels,10)#10 is the number of classes
+  return labels
 
-"softmax regression-like layer"
-weightsEnd = weights(1024, classes)
-biasEnd = bias(classes)
+def readData(oneHot=false):
+    test = getData('t10k-images.idx3-ubyte', 10000)
+    train = getData('train-images.idx3-ubyte', 60000)
+    labelsTest = getLabels('t10k-labels.idx1-ubyte', 10000, oneHot)
+    labelsTrain = getLabels('train-labels.idx1-ubyte', 60000, oneHot)
 
-yConvolutional = tf.matmul(dropout, weightsEnd) + biasEnd'''must be changed'''
+    validation = train[:5000]
+    labelsValidation = labelsTrain[:5000]
+    train= train[5000:]
+    labelsTrain = labelsTrain[5000:]
 
-"---------------Training and Evaluation-------------------"
+    trainSet = Dataset(train, labelsTrain)
+    validationSet = Dataset(validation, labelsValidation)
+    testSet = Dataset(test, labelsTest)
+    return collections.namedtuple('Datasets', ['trainSet','validationSet', 'testSet'])
