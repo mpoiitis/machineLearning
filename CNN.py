@@ -4,7 +4,7 @@ import collections
 
 NUM_OF_EPOCHS = 10
 BATCH_SIZE = 50
-ADAM_ON = False
+ADAM_ON = True
 PATCH_SIZE_DIMENSION = 5
 STRIDE = 1
 NUM_OF_CLASSES = 10
@@ -185,9 +185,21 @@ session.run(tf.initialize_all_variables())
 
 print("Dataset with " + str(NUM_OF_CLASSES) + " classes.")
 print(str(NUM_OF_EPOCHS) + " training epochs.")
+
+"Needed for printing results on each epoch"
+printResults = []
+for i in range(NUM_OF_EPOCHS):
+    printResults.append(False)
+
 trainSet = data.trainSet
 while(True):
     batch = trainSet.fetchBatch(BATCH_SIZE)
+
+    if(printResults[trainSet.completedEpochs] == False):
+        trainAccuracy = accuracy.eval(feed_dict={x: batch[0], y: batch[1], keepProbability: 1.0})
+        print("Epoch %d, training accuracy %g"%(trainSet.completedEpochs, trainAccuracy))
+        printResults[trainSet.completedEpochs] = True
+
     trainStep.run(feed_dict={x: batch[0], y: batch[1], keepProbability: 0.5})
     if(trainSet.completedEpochs == NUM_OF_EPOCHS):
         break
