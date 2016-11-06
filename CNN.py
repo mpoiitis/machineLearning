@@ -1,6 +1,10 @@
 import tensorflow as tf
 import numpy as np
 import collections
+import time
+
+"Get starting time"
+startTime = time.time()
 
 NUM_OF_EPOCHS = 10
 BATCH_SIZE = 50
@@ -204,6 +208,7 @@ while(True):
     if(trainSet.completedEpochs == NUM_OF_EPOCHS):
         break
 
+endTime = time.time()
 "---------------Evaluation-------------------"
 
 accumulativeAccuracy = 0
@@ -217,3 +222,5 @@ while(data.testSet.completedEpochs == 0):
 
 meanAccuracy = accumulativeAccuracy / float(steps)
 print("Test accuracy %g"%meanAccuracy)
+
+print("Time needed for training: " + str(endTime - startTime))
