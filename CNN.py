@@ -197,6 +197,8 @@ for i in range(NUM_OF_EPOCHS):
 
 trainSet = data.trainSet
 while(True):
+    if(trainSet.completedEpochs == NUM_OF_EPOCHS):
+        break
     batch = trainSet.fetchBatch(BATCH_SIZE)
 
     if(printResults[trainSet.completedEpochs] == False):
@@ -205,8 +207,7 @@ while(True):
         printResults[trainSet.completedEpochs] = True
 
     trainStep.run(feed_dict={x: batch[0], y: batch[1], keepProbability: 0.5})
-    if(trainSet.completedEpochs == NUM_OF_EPOCHS):
-        break
+
 
 endTime = time.time()
 "---------------Evaluation-------------------"
