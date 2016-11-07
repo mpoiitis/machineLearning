@@ -8,7 +8,7 @@ startTime = time.time()
 
 NUM_OF_EPOCHS = 10
 BATCH_SIZE = 50
-ADAM_ON = True
+ADAM_ON = False
 PATCH_SIZE_DIMENSION = 5
 STRIDE = 1
 NUM_OF_CLASSES = 10
@@ -201,13 +201,12 @@ while(True):
         break
     batch = trainSet.fetchBatch(BATCH_SIZE)
 
-    if(printResults[trainSet.completedEpochs] == False):
+    if( (trainSet.completedEpochs < NUM_OF_EPOCHS) and printResults[trainSet.completedEpochs] == False):
         trainAccuracy = accuracy.eval(feed_dict={x: batch[0], y: batch[1], keepProbability: 1.0})
         print("Epoch %d, training accuracy %g"%(trainSet.completedEpochs, trainAccuracy))
         printResults[trainSet.completedEpochs] = True
 
     trainStep.run(feed_dict={x: batch[0], y: batch[1], keepProbability: 0.5})
-
 
 endTime = time.time()
 "---------------Evaluation-------------------"
@@ -224,4 +223,4 @@ while(data.testSet.completedEpochs == 0):
 meanAccuracy = accumulativeAccuracy / float(steps)
 print("Test accuracy %g"%meanAccuracy)
 
-print("Time needed for training: " + str(endTime - startTime))
+print("Time needed for training: " + str((endTime - startTime)/60.) + " minutes")
