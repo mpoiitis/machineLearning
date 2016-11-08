@@ -155,7 +155,7 @@ pool2 = maxPoolingLayer2by2(y2)
 "fully-connected layer"
 pool2 = tf.reshape(pool2, [-1, 7*7*SECOND_LEVEL_OUTPUT])
 "1024 neurons "
-weightsLast = weights([7*7*64, 1024])# image reduced to 7x7
+weightsLast = weights([7*7*SECOND_LEVEL_OUTPUT, 1024])# image reduced to 7x7
 biasesLast = biases([1024])
 
 fullyCon = fullyConnectedLayer(pool2,weightsLast)
@@ -175,6 +175,8 @@ yConvolutional = tf.matmul(dropout, weightsEnd) + biasesEnd
 "---------------Training-------------------"
 print("Convolutional network using patch " + str(PATCH_SIZE_DIMENSION) + "x" + str(PATCH_SIZE_DIMENSION)
     + ", stride = " + str(STRIDE) + " and 2x2 max pooling filter.")
+print("First level number of output neurons: " + str(FIRST_LEVEL_OUTPUT))
+print("Second level number of output neurons: " + str(SECOND_LEVEL_OUTPUT))
 crossEntropy = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(yConvolutional, y))
 
 if(ADAM_ON):
