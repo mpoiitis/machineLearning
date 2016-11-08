@@ -7,8 +7,10 @@ import time
 startTime = time.time()
 
 NUM_OF_EPOCHS = 10
+FIRST_LEVEL_OUTPUT = 32
+SECOND_LEVEL_OUTPUT = 64
 BATCH_SIZE = 50
-ADAM_ON = False
+ADAM_ON = True
 PATCH_SIZE_DIMENSION = 5
 STRIDE = 1
 NUM_OF_CLASSES = 10
@@ -127,8 +129,8 @@ x = tf.placeholder(tf.float32, shape = [None, 784])
 y = tf.placeholder(tf.float32, shape = [None, 10])
 
 "convolutional layer 1"
-weights1 = weights([PATCH_SIZE_DIMENSION, PATCH_SIZE_DIMENSION, 1, 32])#5x5 patch 1 input 32 outputs
-biases1 = biases([32])
+weights1 = weights([PATCH_SIZE_DIMENSION, PATCH_SIZE_DIMENSION, 1, FIRST_LEVEL_OUTPUT])#5x5 patch 1 input 32 outputs
+biases1 = biases([FIRST_LEVEL_OUTPUT])
 
 xReshaped = tf.reshape(x, [-1,28,28,1])
 
@@ -140,8 +142,8 @@ y1 = tf.nn.relu(u1)
 pool1 = maxPoolingLayer2by2(y1)
 
 "convolutional layer 2"
-weights2 = weights([5, 5, 32, 64])#5x5 patch 32 inputs 64 outputs
-biases2 = biases([64])
+weights2 = weights([5, 5, FIRST_LEVEL_OUTPUT, SECOND_LEVEL_OUTPUT])#5x5 patch 32 inputs 64 outputs
+biases2 = biases([SECOND_LEVEL_OUTPUT])
 
 conv2 = convolutionalLayer(pool1, weights2)
 u2 = conv2 + biases2
@@ -151,7 +153,7 @@ y2 = tf.nn.relu(u2)
 pool2 = maxPoolingLayer2by2(y2)
 
 "fully-connected layer"
-pool2 = tf.reshape(pool2, [-1, 7*7*64])
+pool2 = tf.reshape(pool2, [-1, 7*7*SECOND_LEVEL_OUTPUT])
 "1024 neurons "
 weightsLast = weights([7*7*64, 1024])# image reduced to 7x7
 biasesLast = biases([1024])
