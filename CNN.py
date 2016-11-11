@@ -6,14 +6,15 @@ import time
 "Get starting time"
 startTime = time.time()
 
-NUM_OF_EPOCHS = 10
+NUM_OF_EPOCHS = 2
 FIRST_LEVEL_OUTPUT = 32
 SECOND_LEVEL_OUTPUT = 64
 BATCH_SIZE = 50
-ADAM_ON = True
 PATCH_SIZE_DIMENSION = 5
 STRIDE = 1
 NUM_OF_CLASSES = 10
+ADAM_ON = True
+VALIDATION_ON = False
 
 class Dataset(object):
     def __init__(self, currentSet, labels, reshape = True):
@@ -64,7 +65,7 @@ def getData(fileName, numOfImages):
     return data
 
 def convertToOneHot(labels, numOfClasses):
-    "one hot vector for e.g. number 3 = 0001000000"
+    "one hot vector for e.g. number 3 = 0001000000. 10 slots because there are 10 classes"
     numOfLabels = labels.shape[0]
     offset = np.arange(numOfLabels) * numOfClasses
     oneHot = np.zeros((numOfLabels, numOfClasses))#numOfLabels x numOfClasses matrix
@@ -88,6 +89,7 @@ def readData(oneHot=False):
     labelsTest = getLabels('t10k-labels.idx1-ubyte', 10000, oneHot)
     labelsTrain = getLabels('train-labels.idx1-ubyte', 60000, oneHot)
 
+    "in case we want to test on a train sample"
     validation = train[:5000]
     labelsValidation = labelsTrain[:5000]
     train= train[5000:]
@@ -200,13 +202,12 @@ for i in range(NUM_OF_EPOCHS):
     printResults.append(False)
 
 trainSet = data.trainSet
-while(True):
-    if(trainSet.completedEpochs == NUM_OF_EPOCHS):
-        break
+while(trainSet.completedEpochs < NUM_OF_EPOCHS):
     batch = trainSet.fetchBatch(BATCH_SIZE)
 
     if( (trainSet.completedEpochs < NUM_OF_EPOCHS) and printResults[trainSet.completedEpochs] == False):
         trainAccuracy = accuracy.eval(feed_dict={x: batch[0], y: batch[1], keepProbability: 1.0})
+
         print("Epoch %d, training accuracy %g"%(trainSet.completedEpochs, trainAccuracy))
         printResults[trainSet.completedEpochs] = True
 
@@ -214,17 +215,30 @@ while(True):
 
 endTime = time.time()
 "---------------Evaluation-------------------"
+if(not(VALIDATION_ON)):
+    accumulativeAccuracy = 0
+    steps = 0
 
-accumulativeAccuracy = 0
-steps = 0
+    while(data.testSet.completedEpochs == 0):
+        steps +=1
+        batch = data.testSet.fetchBatch(BATCH_SIZE)
+        testAccuracy = accuracy.eval(feed_dict={x: batch[0], y: batch[1], keepProbability: 1.0})
+        accumulativeAccuracy += testAccuracy
 
-while(data.testSet.completedEpochs == 0):
-    steps +=1
-    batch = data.testSet.fetchBatch(BATCH_SIZE)
-    testAccuracy = accuracy.eval(feed_dict={x: batch[0], y: batch[1], keepProbability: 1.0})
-    accumulativeAccuracy += testAccuracy
+    meanAccuracy = accumulativeAccuracy / float(steps)
+    print("Test accuracy %g"%meanAccuracy)
+else:
+    print("---Validation enabled---")
+    accumulativeAccuracy = 0
+    steps = 0
 
-meanAccuracy = accumulativeAccuracy / float(steps)
-print("Test accuracy %g"%meanAccuracy)
+    while(data.validationSet.completedEpochs == 0):
+        steps +=1
+        batch = data.validationSet.fetchBatch(BATCH_SIZE)
+        validationAccuracy = accuracy.eval(feed_dict={x: batch[0], y: batch[1], keepProbability: 1.0})
+        accumulativeAccuracy += validationAccuracy
+
+    meanAccuracy = accumulativeAccuracy / float(steps)
+    print("Validation accuracy %g"%meanAccuracy)
 
 print("Time needed for training: " + str((endTime - startTime)/60.) + " minutes")
