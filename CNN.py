@@ -2,11 +2,12 @@ import tensorflow as tf
 import numpy as np
 import collections
 import time
+import operator
 
 "Get starting time"
 startTime = time.time()
 
-NUM_OF_EPOCHS = 2
+NUM_OF_EPOCHS = 10
 FIRST_LEVEL_OUTPUT = 32
 SECOND_LEVEL_OUTPUT = 64
 BATCH_SIZE = 50
@@ -15,6 +16,7 @@ STRIDE = 1
 NUM_OF_CLASSES = 10
 ADAM_ON = True
 VALIDATION_ON = False
+PRINT_EVALUATION = False
 
 class Dataset(object):
     def __init__(self, currentSet, labels, reshape = True):
@@ -207,7 +209,6 @@ while(trainSet.completedEpochs < NUM_OF_EPOCHS):
 
     if( (trainSet.completedEpochs < NUM_OF_EPOCHS) and printResults[trainSet.completedEpochs] == False):
         trainAccuracy = accuracy.eval(feed_dict={x: batch[0], y: batch[1], keepProbability: 1.0})
-
         print("Epoch %d, training accuracy %g"%(trainSet.completedEpochs, trainAccuracy))
         printResults[trainSet.completedEpochs] = True
 
@@ -223,6 +224,20 @@ if(not(VALIDATION_ON)):
         steps +=1
         batch = data.testSet.fetchBatch(BATCH_SIZE)
         testAccuracy = accuracy.eval(feed_dict={x: batch[0], y: batch[1], keepProbability: 1.0})
+        predictedValues = yConvolutional.eval(feed_dict={x: batch[0], y: batch[1], keepProbability: 1.0})
+        if(PRINT_EVALUATION == True):
+            "Get predicted and true outputs"
+            pred = []
+            real = []
+            for item in predictedValues:
+                index, value = max(enumerate(item), key=operator.itemgetter(1))
+                pred.append(index)
+                for item in batch[1]:
+                    index, value = max(enumerate(item), key=operator.itemgetter(1))
+                    real.append(index)
+
+                for i,item in enumerate(pred):
+                    print("Predicted index : " + str(pred[i]) + "   Real index : " + str(real[i]))
         accumulativeAccuracy += testAccuracy
 
     meanAccuracy = accumulativeAccuracy / float(steps)
