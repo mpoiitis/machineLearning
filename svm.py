@@ -1,11 +1,11 @@
 import numpy as np
 import time
-from sklearn.svm import SVC
+from sklearn.svm import LinearSVC
 from sklearn import metrics
 from sklearn.decomposition import PCA
 
-KERNEL_TYPE = "rbf"#choices "linear","poly","sigmoid","rbf"
-WITH_PCA = False
+KERNEL_TYPE = "linear"
+WITH_PCA = True
 
 def getData(fileName, numOfImages):
   with open(fileName,"rb") as f:
@@ -27,7 +27,7 @@ def getLabels(fileName, numOfImages):
         "labels to int64 vector"
         labels = np.frombuffer(chunk, dtype=np.uint8).astype(np.int64)
         #change labels due to the binary nature of the svm
-        labels = [0 if(label%2 == 0) else 1 for label in labels]
+        labels = [-1 if(label%2 == 0) else 1 for label in labels]
     return labels
 
 def readData():
@@ -44,14 +44,16 @@ def readData():
             #the first value greater than 90% is the minimum number of attributes that fit our PCA
             if (variance > 0.9):
                 numOfAttrToKeep = index
+                print("PCA with " + str(variance*100) + "% information preservation.")
+                print("Attributes reduced from " + str(len(train[0])) + " to " + str(numOfAttrToKeep))
                 break
 
-                #true pca to reduce to the number of attributes in train and test set
-                pca = PCA(n_components=numOfAttrToKeep)
-                pca.fit(train)
-                train = pca.transform(train)# now train set has undergone PCA
-                pca.fit(test)
-                test = pca.transform(test)
+        #true pca to reduce to the number of attributes in train and test set
+        pca = PCA(n_components=numOfAttrToKeep)
+        pca.fit(train)
+        train = pca.transform(train)# now train set has undergone PCA
+        pca.fit(test)
+        test = pca.transform(test)
 
     data = {'train': {'data': train,
                       'labels': labelsTrain},
@@ -62,10 +64,9 @@ def readData():
 data = readData()
 
 #Classifier, default c=1.0, default kernel=rbf, default degree=3, default gamma=1/n_features
-classifier = SVC(C=2.8, kernel=KERNEL_TYPE, degree=2, gamma=.0073)
+classifier = LinearSVC()
 
 length = len(data['train']['data'])
-
 #Get training time
 startTime = time.time()
 classifier.fit(data['train']['data'][:length], data['train']['labels'][:length])
