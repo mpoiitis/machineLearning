@@ -1,11 +1,16 @@
 import numpy as np
 import time
 from sklearn.svm import LinearSVC
+from sklearn.svm import SVC
 from sklearn import metrics
 from sklearn.decomposition import PCA
 
-KERNEL_TYPE = "linear"
-WITH_PCA = True
+KERNEL_TYPE = "poly"
+DEGREE = 3
+GAMMA = .0078
+C = 1.0
+WITH_PCA =  True
+INFO_PRES = 0.9
 
 def getData(fileName, numOfImages):
   with open(fileName,"rb") as f:
@@ -42,7 +47,7 @@ def readData():
         varianceList = np.cumsum(pca.explained_variance_ratio_)
         for index,variance in enumerate(varianceList):
             #the first value greater than 90% is the minimum number of attributes that fit our PCA
-            if (variance > 0.9):
+            if (variance > INFO_PRES):
                 numOfAttrToKeep = index
                 print("PCA with " + str(variance*100) + "% information preservation.")
                 print("Attributes reduced from " + str(len(train[0])) + " to " + str(numOfAttrToKeep))
@@ -52,7 +57,7 @@ def readData():
         pca = PCA(n_components=numOfAttrToKeep)
         pca.fit(train)
         train = pca.transform(train)# now train set has undergone PCA
-        pca.fit(test)
+        #pca.fit(test)
         test = pca.transform(test)
 
     data = {'train': {'data': train,
@@ -63,8 +68,11 @@ def readData():
 
 data = readData()
 
-#Classifier, default c=1.0, default kernel=rbf, default degree=3, default gamma=1/n_features
-classifier = LinearSVC()
+#Classifier, default c=1.0, default kernel='rbf', default degree=3, default gamma=1/n_features
+if(KERNEL_TYPE == "linear"):
+    classifier = LinearSVC(C=C)
+else:
+    classifier = SVC(probability=False, kernel=KERNEL_TYPE, degree=DEGREE, C=C, gamma=GAMMA)
 
 length = len(data['train']['data'])
 #Get training time
